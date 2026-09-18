@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mail Inspection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F1ECDF;
+    --paper-deep: #E8E0CC;
+    --paper-line: #D6CBB0;
+    --ink: #24211B;
+    --ink-soft: #5B5548;
+    --postal-blue: #1E3A5F;
+    --postal-red: #B8402A;
+    --safe-green: #3F6A4E;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    background-image: radial-gradient(circle, var(--paper-line) 0.6px, transparent 0.6px);
+    background-size: 14px 14px;
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 56px 20px 80px;
+    min-height: 100vh;
+  }
+
+  .sheet { width: 100%; max-width: 540px; }
+
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  h1 {
+    font-family: 'Zilla Slab', serif;
+    font-weight: 700;
+    font-size: 38px;
+    line-height: 1.1;
+    margin: 6px 0 10px;
+  }
+
+  p.lede {
+    font-size: 15px;
+    color: var(--ink-soft);
+    max-width: 40ch;
+    line-height: 1.5;
+    margin: 0 0 32px;
+  }
+
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--paper-line);
+    border-radius: 3px;
+    position: relative;
+    padding: 30px 28px 26px;
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    top: -6px;
+    left: 0;
+    right: 0;
+    height: 12px;
+    background-image: radial-gradient(circle, var(--paper) 5px, transparent 5.5px);
+    background-size: 18px 12px;
+    background-position: 9px 0;
+  }
+
+  label.field-label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 8px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 128px;
+    padding: 14px;
+    background: #fbf9f3;
+    border: 1px solid var(--paper-line);
+    border-radius: 2px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14.5px;
+    color: var(--ink);
+    resize: vertical;
+    line-height: 1.5;
+  }
+
+  textarea:focus { outline: 2px solid var(--postal-blue); outline-offset: 1px; }
+
+  .examples { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .chip-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    background: transparent;
+    border: 1px solid var(--paper-line);
+    color: var(--ink-soft);
+    padding: 6px 10px;
+    border-radius: 2px;
+    cursor: pointer;
+  }
+
+  .chip-btn:hover { border-color: var(--postal-blue); color: var(--postal-blue); }
+
+  .submit-row { display: flex; align-items: center; gap: 14px; margin-top: 22px; }
+
+  button.inspect {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14.5px;
+    background: var(--postal-blue);
+    color: #fff;
+    border: none;
+    padding: 12px 22px;
+    border-radius: 2px;
+    cursor: pointer;
+  }
+
+  button.inspect:disabled { background: #9DB0C4; cursor: not-allowed; }
+
+  .error { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--postal-red); min-height: 16px; }
+
+  .result {
+    display: none;
+    margin-top: 34px;
+    padding-top: 28px;
+    border-top: 1px dashed var(--paper-line);
+    align-items: center;
+    gap: 24px;
+  }
+
+  .result.show { display: flex; }
+
+  .stamp {
+    flex: 0 0 auto;
+    width: 108px;
+    height: 108px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-family: 'Zilla Slab', serif;
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.15;
+    transform: rotate(-8deg);
+    border: 3px solid currentColor;
+    position: relative;
+  }
+
+  .stamp::before {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    opacity: 0.55;
+  }
+
+  .stamp.flagged { color: var(--postal-red); }
+  .stamp.cleared { color: var(--safe-green); }
+
+  .result-detail { flex: 1; }
+
+  .result-verdict { font-family: 'Zilla Slab', serif; font-weight: 600; font-size: 20px; margin-bottom: 4px; }
+  .result-verdict.flagged { color: var(--postal-red); }
+  .result-verdict.cleared { color: var(--safe-green); }
+
+  .confidence-row { font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: var(--ink-soft); margin-bottom: 10px; }
+
+  .meter {
+    width: 100%;
+    max-width: 220px;
+    height: 4px;
+    background: var(--paper-line);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+
+  .meter-fill { height: 100%; background: currentColor; }
+
+  .triggers-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-soft); margin-bottom: 6px; }
+
+  .tag {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    background: var(--paper-deep);
+    border: 1px solid var(--paper-line);
+    padding: 3px 9px;
+    border-radius: 2px;
+    margin: 0 6px 6px 0;
+  }
+
+  footer { margin-top: 20px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--ink-soft); text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+
+  <div class="eyebrow">local inspection desk</div>
+  <h1>Return to sender?</h1>
+  <p class="lede">Paste a message below. It gets checked against word patterns learned from thousands of prior letters.</p>
+
+  <div class="card">
+    <label class="field-label" for="messageInput">Message</label>
+    <textarea id="messageInput" placeholder="Paste an email or text message here..."></textarea>
+
+    <div class="examples">
+      <button class="chip-btn" onclick="fillExample('Hey, are we still on for lunch tomorrow?')">an ordinary message</button>
+      <button class="chip-btn" onclick="fillExample('CONGRATULATIONS! You have WON a $1000 prize. Click here NOW to claim!!!')">a suspicious one</button>
+    </div>
+
+    <div class="submit-row">
+      <button class="inspect" id="submitBtn" onclick="classify()">Inspect message</button>
+      <div class="error" id="errorBox"></div>
+    </div>
+
+    <div class="result" id="result">
+      <div class="stamp" id="stamp"></div>
+      <div class="result-detail">
+        <div class="result-verdict" id="resultVerdict"></div>
+        <div class="confidence-row" id="resultConfidence"></div>
+        <div class="meter"><div class="meter-fill" id="meterFill"></div></div>
+        <div id="triggerBlock" style="display:none;">
+          <div class="triggers-label">words that stood out</div>
+          <div id="resultTriggers"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>naive bayes classifier · trained locally · nothing you paste leaves your machine</footer>
+
+</div>
+
+<script>
+const API_URL = "http://127.0.0.1:5000/classify";
+
+function fillExample(text) {
+  document.getElementById("messageInput").value = text;
+}
+
+async function classify() {
+  const input = document.getElementById("messageInput");
+  const btn = document.getElementById("submitBtn");
+  const result = document.getElementById("result");
+  const errorBox = document.getElementById("errorBox");
+
+  const message = input.value.trim();
+  errorBox.textContent = "";
+  result.classList.remove("show");
+
+  if (!message) {
+    errorBox.textContent = "Enter a message first.";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Inspecting...";
+
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      errorBox.textContent = data.error || "Something went wrong.";
+      return;
+    }
+
+    const isSpam = data.label === "spam";
+    const stamp = document.getElementById("stamp");
+    const verdict = document.getElementById("resultVerdict");
+    const meterFill = document.getElementById("meterFill");
+    const confidenceRow = document.getElementById("resultConfidence");
+
+    stamp.className = "stamp " + (isSpam ? "flagged" : "cleared");
+    stamp.textContent = isSpam ? "FLAGGED" : "CLEARED";
+
+    verdict.className = "result-verdict " + (isSpam ? "flagged" : "cleared");
+    verdict.textContent = isSpam ? "Reads as spam" : "Reads as legitimate";
+
+    const pct = (data.confidence * 100).toFixed(1);
+    confidenceRow.textContent = `confidence — ${pct}%`;
+    meterFill.style.width = pct + "%";
+    meterFill.style.color = isSpam ? "var(--postal-red)" : "var(--safe-green)";
+
+    const triggerBlock = document.getElementById("triggerBlock");
+    const triggersEl = document.getElementById("resultTriggers");
+    if (data.trigger_words && data.trigger_words.length > 0) {
+      triggerBlock.style.display = "block";
+      triggersEl.innerHTML = data.trigger_words.map(w => `<span class="tag">${w}</span>`).join("");
+    } else {
+      triggerBlock.style.display = "none";
+    }
+
+    result.classList.add("show");
+
+  } catch (err) {
+    errorBox.textContent = "Could not reach the server. Is app.py running?";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Inspect message";
+  }
+}
+</script>
+
+</body>
+</html>
